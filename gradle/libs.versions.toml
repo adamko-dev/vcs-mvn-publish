@@ -12,3 +12,4 @@ kotlinx-serialization = "1.3.3"
 ###########
 
 kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom", version.ref = "kotlin" }
+kotlin-utilIO = { group = "org.jetbrains.kotlin", name = "kotlin-util-io" }

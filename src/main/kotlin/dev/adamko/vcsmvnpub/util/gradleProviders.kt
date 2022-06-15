@@ -2,6 +2,7 @@ package dev.adamko.vcsmvnpub.util
 
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.TaskContainer
 
 
 internal fun <T> Property<T>.set(value: T?, convention: T?) {

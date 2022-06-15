@@ -3,9 +3,6 @@ package dev.adamko.vcsmvnpub.tasks
 
 import dev.adamko.vcsmvnpub.GitService
 import dev.adamko.vcsmvnpub.VcsMvnGitRepo
-import dev.adamko.vcsmvnpub.VcsMvnGitRepo.BranchCreateMode.CreateOrphan
-import dev.adamko.vcsmvnpub.VcsMvnGitRepo.BranchCreateMode.Disabled
-import dev.adamko.vcsmvnpub.VcsMvnPublishPlugin
 import java.io.File
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileTree
@@ -35,6 +32,11 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
   abstract val gitService: Property<GitService>
 
 
+  init {
+    outputs.upToDateWhen(GitRepoInitTaskUpToDateCheck)
+  }
+
+
   @TaskAction
   fun exec() {
     logger.lifecycle("GitRepoInitTask executing")
@@ -42,73 +44,93 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
     val gitService = gitService.get()
 
     val localRepoTree: FileTree = localRepoDir.asFileTree
+    val localRepoFile: File = localRepoDir.asFile.get()
 
-    val localRepoDir: File = localRepoDir.asFile.get()
     val remoteUri: String = remoteUri.get()
     val branch: String = artifactBranch.get()
-    val artifactBranchCreateMode: VcsMvnGitRepo.BranchCreateMode = artifactBranchCreateMode.get()
 
-    if (!gitService.isRepo(localRepoDir)) {
-      require(localRepoTree.isEmpty) { "localRepoDir must be a git directory, or empty $localRepoDir" }
+    require(
+      localRepoTree.matching { exclude(".git") }.isEmpty
+    ) {
+      val topFiles = localRepoFile.walk().maxDepth(1).map { it.name }.joinToString(", ")
+      val gitStatus = gitService.status(localRepoFile)
 
-      logger.lifecycle("cloning remote '$remoteUri' into local '$localRepoDir'")
-
-      gitService.clone(
-        repoDir = localRepoDir,
-        remoteUri = remoteUri,
-      )
+      """
+        |localRepoDir must be an up-to-date git directory, or empty.
+        |
+        |Contained files: $topFiles
+        |git status: $gitStatus
+        |
+        |Refusing to automatically overwrite.
+        |
+        |Please confirm that path ${localRepoFile.canonicalPath} is correct, and manually refresh or delete it.
+      """.trimMargin()
     }
 
-    gitService.fetch(localRepoDir)
+    logger.lifecycle("initialising remote '$remoteUri' into local '$localRepoFile'")
 
-    logger.lifecycle("cleaning $branch in $localRepoDir")
-    gitService.clean(
-      repoDir = localRepoDir,
-      force = true,
-      directories = true,
+    gitService.init(
+      repoDir = localRepoFile,
+//      branch = branch,
+    )
+
+    val remoteOriginUrl = gitService.configGetRemoteOriginUrl(localRepoFile).getOrElse("")
+
+    when {
+      remoteOriginUrl.isBlank()    -> // remote isn't defined
+        gitService.remoteAdd(
+          repoDir = localRepoFile,
+          remoteUri = remoteUri,
+        )
+
+      remoteOriginUrl != remoteUri ->
+        error("invalid remote, expected URL $remoteUri but was $remoteOriginUrl")
+    }
+
+    gitService.fetch(
+      repoDir = localRepoFile,
+      depth = 1,
     )
 
     val branchExists = gitService.doesBranchExistOnRemote(
-      repoDir = localRepoDir,
+      repoDir = localRepoFile,
       branch = branch,
-    )
+    ).get()
 
     if (branchExists) {
-      logger.lifecycle("checking out $branch into $localRepoDir")
+      logger.lifecycle("checking out existing $branch in $localRepoFile")
       gitService.checkout(
-        repoDir = localRepoDir,
+        repoDir = localRepoFile,
         branch = branch,
       )
     } else {
-      when (artifactBranchCreateMode) {
-        CreateOrphan -> gitService.initOrphanBranch(localRepoDir, branch)
-        Disabled     -> error(
+      logger.lifecycle("checking out new branch $branch in $localRepoFile")
+      when (artifactBranchCreateMode.get()) {
+        VcsMvnGitRepo.BranchCreateMode.CreateOrphan -> {
+          gitService.checkoutOrphan(
+            localRepoFile,
+            branch,
+            force = true
+          )
+
+        }
+        VcsMvnGitRepo.BranchCreateMode.Disabled     -> error(
           "branch $branch does not exist in $remoteUri, and artifactBranchCreateMode is $artifactBranchCreateMode"
         )
       }
     }
-  }
 
-
-  private fun GitService.initOrphanBranch(
-    localRepoDir: File,
-    branch: String,
-  ) {
-    logger.lifecycle("initialising a new orphan branch $branch in $localRepoDir")
-
-    checkoutOrphan(
-      repoDir = localRepoDir,
-      branch = branch,
+    logger.lifecycle("cleaning $branch in $localRepoFile")
+    gitService.clean(
+      repoDir = localRepoFile,
+      force = true,
+      directories = true,
     )
 
-    commit(
-      repoDir = localRepoDir,
-      message = "[${VcsMvnPublishPlugin.PROJECT_NAME}] initialised new orphan branch",
-    )
-
-    push(
-      repoDir = localRepoDir,
-    )
+//    gitService.commit(
+//      repoDir = localRepoFile,
+//      message = "${VcsMvnPublishPlugin.PROJECT_NAME} initialized repo",
+//    )
   }
 
 

@@ -5,9 +5,6 @@ plugins {
   `kotlin-dsl`
   `java-gradle-plugin`
 
-
-
-
   id("me.qoomon.git-versioning")
 
   id("com.gradle.plugin-publish")
@@ -33,7 +30,10 @@ gitVersioning.apply {
 
 
 dependencies {
-  implementation("org.jetbrains.kotlin:kotlin-util-io")
+  implementation(platform(libs.kotlin.bom))
+  implementation(libs.kotlin.utilIO)
+
+//  implementation("org.eclipse.jgit:org.eclipse.jgit:6.2.0.202206071550-r")
 }
 
 
@@ -65,8 +65,3 @@ idea {
     )
   }
 }
-
-/**
- * The version of the Kotlin compiler embedded in gradle-kotlin-dsl (currently _${embeddedKotlinVersion}_).
- */
-val embeddedKotlinVersion = "$123"

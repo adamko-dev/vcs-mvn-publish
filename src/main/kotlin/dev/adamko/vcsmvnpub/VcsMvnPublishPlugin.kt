@@ -6,21 +6,22 @@ import java.net.URI
 import javax.inject.Inject
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.FileSystemOperations
-import org.gradle.api.internal.file.FileOperations
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
-import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.publish.plugins.PublishingPlugin
+import org.gradle.api.tasks.TaskContainer
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.registerIfAbsent
 import org.gradle.kotlin.dsl.withType
@@ -28,9 +29,9 @@ import org.gradle.kotlin.dsl.withType
 
 abstract class VcsMvnPublishPlugin @Inject constructor(
   private val providers: ProviderFactory,
-  private val objects: ObjectFactory,
-  private val files: FileOperations,
-  private val fileSys: FileSystemOperations,
+//  private val objects: ObjectFactory,
+//  private val files: FileOperations,
+//  private val fileSys: FileSystemOperations,
 ) : Plugin<Project>, ProviderFactory by providers {
 
 
@@ -49,7 +50,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       log.lifecycle("configuring GitRepo")
 
       settings.gitRepos.all {
-        project.configureGitRepo(this, gitServiceProvider)
+        project.configureGitRepo(settings, this, gitServiceProvider)
       }
 
     }
@@ -66,28 +67,27 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
             .dir(".gradle/$BASE_REPO_NAME/${project.pathEscaped}")
         )
         gitExec.convention("git")
+        gitProjectRepoDir.convention { rootProject.layout.projectDirectory.asFile }
       }
   }
 
 
   private fun Project.configureGitRepo(
+    settings: VcsMvnPublishSettings,
     gitRepo: VcsMvnGitRepo,
     gitServiceProvider: Provider<GitService>,
   ) {
-    log.lifecycle("[$PROJECT_NAME] configuring git repo")
+    log.lifecycle("[$PROJECT_NAME] configuring git repo $gitRepo")
 
     gitRepo.remoteUri.convention(
       gitRemoteUriConvention(
         gitServiceProvider,
-        rootProject.layout.projectDirectory,
+        settings.gitProjectRepoDir,
       )
     )
 
-//
-    val localGitRepoDir = gitRepo.localRepoDir
-
-
-    val initGitRepoTask = project.tasks.register<GitRepoInitTask>(GitRepoInitTask.NAME) {
+    // register an 'init-repo' task specifically for this GitRepo
+    val gitRepoInitTask = project.tasks.register<GitRepoInitTask>(GitRepoInitTask.NAME) {
       artifactBranch.convention(gitRepo.artifactBranch)
       localRepoDir.convention(gitRepo.localRepoDir)
       remoteUri.convention(gitRepo.remoteUri)
@@ -96,14 +96,18 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       gitService.convention(gitServiceProvider)
     }
 
+    // ensure all git repos are initialized before any publishing tasks run
+    tasks.withType<PublishToMavenRepository>().configureEach {
+      mustRunAfter(gitRepoInitTask)
+    }
+
     // create a new local Maven repository
     publishing.repositories.maven {
       name = PROJECT_NAME
-
       val artifactDir: String? = gitRepo.repoArtifactDir.orNull
       val targetDir: Provider<Directory> = when {
-        artifactDir.isNullOrEmpty() -> localGitRepoDir
-        else                        -> localGitRepoDir.dir(artifactDir)
+        artifactDir.isNullOrEmpty() -> gitRepo.localRepoDir
+        else                        -> gitRepo.localRepoDir.dir(artifactDir)
       }
       setUrl(targetDir.get().asFile)
     }
@@ -111,22 +115,24 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
     // find the publishing tasks created by the local Maven repo
     val gitRepoPublishingTasks = tasks
       .withType<PublishToMavenRepository>()
-      .matching {
-        val matching = it.repository.url sameFileAs localGitRepoDir
-        log.lifecycle("found matching ${it.name}")
+      .matching { publishTask ->
+        val matching = publishTask.repository.url sameFileAs gitRepo.localRepoDir
+        log.lifecycle("found matching ${publishTask.name}")
         matching
       }
 
     // publishing depends on the git repo being set up and checked out
     gitRepoPublishingTasks.configureEach {
-      dependsOn(initGitRepoTask)
+      dependsOn(gitRepoInitTask)
     }
 
-    // create
+    // create a task to commit and push the artifacts
     project.tasks.register<GitRepoPublishTask>(GitRepoPublishTask.NAME) {
       dependsOn(gitRepoPublishingTasks)
+      dependsOn(gitRepoInitTask)
+      dependsOn(tasks.provider.publish)
       gitService.set(gitServiceProvider)
-      localRepoDir.set(initGitRepoTask.flatMap { it.localRepoDir })
+      localRepoDir.set(gitRepo.localRepoDir)
       publishTasks.addAll(gitRepoPublishingTasks)
     }
   }
@@ -146,7 +152,6 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       parameters {
         gitExec.set(settings.gitExec)
         defaultOrigin.set("origin")
-        porcelainEnabled.set(true)
       }
     }
   }
@@ -157,28 +162,39 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
    */
   private fun gitRemoteUriConvention(
     gitServiceProvider: Provider<GitService>,
-    rootDir: Directory,
+    gitProjectRepoDir: RegularFileProperty,
   ): Provider<String> {
-
-    val rootDirProvider = objects.directoryProperty()
-    rootDirProvider.set(rootDir)
-
     return gitServiceProvider
-      .flatMap { gitService ->
-        val result = gitService.configGet(rootDir.asFile, "remote.origin.url").trim()
-
-        log.lifecycle("gitRemoteUriConvention: $result")
-
-        providers.provider { result.ifBlank { null } }
+      .zip(gitProjectRepoDir) { service, dir -> service to dir }
+      .flatMap { (service, dir) ->
+        service.configGetRemoteOriginUrl(dir.asFile)
       }
+  }
+
+
+  /** task provider helpers - help make the script configurations shorter & more legible */
+  private val TaskContainer.provider: TaskProviders get() = TaskProviders(this)
+
+
+  /** Lazy task providers */
+  private inner class TaskProviders(private val tasks: TaskContainer) {
+
+    val publish: Provider<Task>
+      get() = provider(PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME)
+
+    // Workaround for https://github.com/gradle/gradle/issues/16543
+    private inline fun <reified T : Task> provider(taskName: String): Provider<T> =
+      providers
+        .provider { taskName }
+        .flatMap { tasks.named<T>(it) }
   }
 
 
   companion object {
     const val PROJECT_NAME = "VcsMvnPublish"
+    const val EXTENSION_NAME = "vcsMvnPublish"
     const val TASK_GROUP = "vcs mvn publish"
     const val BASE_REPO_NAME = "vcs-mvn-publish"
-    const val EXTENSION_NAME = "vcsMvnPublish"
 
 
     internal val Project.publishing: PublishingExtension
@@ -193,16 +209,13 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       get() {
         logger.lifecycle("escaping path $path, display name $displayName, is root ${project == rootProject}")
         return name.replace('-') { !it.isLetterOrDigit() }
-//        return if (project == rootProject) {
-//          "base"
-//        } else {
-//          displayName.replace('-') { !it.isLetterOrDigit() }
-//        }
       }
 
 
     /** Replace characters that satisfy [matcher] with [new] */
     private fun String.replace(new: Char, matcher: (Char) -> Boolean): String =
       map { c -> if (matcher(c)) new else c }.joinToString("")
+
+
   }
 }

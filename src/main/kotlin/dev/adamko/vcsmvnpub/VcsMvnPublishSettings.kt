@@ -3,6 +3,7 @@ package dev.adamko.vcsmvnpub
 import javax.inject.Inject
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
@@ -36,9 +37,18 @@ abstract class VcsMvnPublishSettings @Inject constructor(
   @get:Optional
   abstract val gitExec: Property<String>
 
-
+  /**
+   * vcs-mvn-publish will guess a default remote URL for all [gitRepos] based on the provided
+   * directory. This defaults to [org.gradle.api.Project.getRootDir].
+   *
+   * To disable this behaviour, set this property to null.
+   */
   @get:Input
   @get:Optional
+  abstract val gitProjectRepoDir: RegularFileProperty
+
+
+  @get:Input
   abstract val gitRepos: DomainObjectSet<VcsMvnGitRepo>
 
   fun gitRepo(
@@ -46,7 +56,7 @@ abstract class VcsMvnPublishSettings @Inject constructor(
   ) {
     logger.lifecycle("Creating GitRepo")
     val repo = objects.newInstance<VcsMvnGitRepo>().apply {
-      localRepoDir.convention(localPublishDir.dir("git"))
+      localRepoDir.convention(localPublishDir)
       artifactBranchCreateMode.convention(VcsMvnGitRepo.BranchCreateMode.CreateOrphan)
       artifactBranch.convention("artifacts")
       repoArtifactDir.convention("m2")

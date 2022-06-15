@@ -1,19 +1,24 @@
 package dev.adamko.vcsmvnpub
 
-import dev.adamko.vcsmvnpub.util.execCapture
 import java.io.File
 import javax.inject.Inject
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.gradle.process.ExecOperations
+import org.gradle.process.ExecOutput
 import org.jetbrains.kotlin.util.parseSpaceSeparatedArgs
 
+
+@Suppress("UnstableApiUsage") // providers.exec is incubating
 abstract class GitService @Inject constructor(
-  private val executor: ExecOperations
+  private val executor: ExecOperations,
+  private val providers: ProviderFactory,
 ) : BuildService<GitService.Params> {
 
   private val logger: Logger = Logging.getLogger(GitService::class.java)
@@ -29,36 +34,99 @@ abstract class GitService @Inject constructor(
     val gitExec: Property<String>
 
     val defaultOrigin: Property<String>
-    val porcelainEnabled: Property<Boolean>
+    //    val porcelainEnabled: Property<Boolean>
     val logLevel: Property<LogLevel>
   }
 
 
-  fun isRepo(
+  fun isInsideWorkTree(
     repoDir: File,
-  ): Boolean {
-    val output = repoDir git "rev-parse --is-inside-work-tree $porcelainFlag"
-    return output.trim().toBoolean()
+  ): Provider<Boolean> {
+    val result = repoDir git "rev-parse --is-inside-work-tree"
+    return result.standardOutput.asText.map { it.trim().toBoolean() }
+  }
+
+
+  fun topLevelDir(
+    repoDir: File,
+  ): Provider<File> {
+    val topLevel = repoDir git "rev-parse --show-toplevel"
+    return topLevel.standardOutput.asText.map {
+      File(it.trim())
+    }
   }
 
 
   fun fetch(
     repoDir: File,
     origin: String? = defaultOrigin,
-  ): String = repoDir git "fetch $origin"
+    depth: Int? = null,
+  ): String {
+    val depthFlag = if (depth != null) "--depth $depth" else ""
+    val result = repoDir git "fetch $depthFlag $origin"
+    return result.getAndLog()
+  }
 
 
-  fun clone(
+  fun init(
+    repoDir: File,
+    branch: String? = null,
+  ): String {
+    val initialBranch = if (branch.isNullOrBlank()) "" else "--initial-branch=$branch"
+    val result = repoDir git "init ${repoDir.canonicalPath} $initialBranch"
+    return result.getAndLog()
+  }
+
+
+  fun status(
+    repoDir: File,
+    branch: Boolean = false
+  ): String {
+    val branchFlag = if (branch) "--branch" else ""
+
+    return (repoDir git "status --porcelain $branchFlag").getAndLog()
+  }
+
+
+  // https://git-scm.com/docs/git-remote#Documentation/git-remote.txt-emaddem
+  fun remoteAdd(
     repoDir: File,
     remoteUri: String,
+    branch: String? = null,
     origin: String? = defaultOrigin,
-    noCheckout: Boolean = true,
+    fetch: Boolean = false,
   ): String {
-    val originFlag = if (origin.isNullOrBlank()) "" else "--origin $origin"
-    val noCheckoutFlag = if (noCheckout) "--no-checkout" else ""
+    val branchTrack = if (branch.isNullOrBlank()) "" else "-t $branch"
+    val fetchFlag = if (fetch) "-f" else ""
 
-    return repoDir git "clone $remoteUri $noCheckoutFlag $originFlag"
+    val result = repoDir git "remote add $fetchFlag $branchTrack $origin $remoteUri"
+    return result.getAndLog()
   }
+
+//  /**
+//   * 1. `git init`
+//   * 2. `git remote add`
+//   * 3. `git fetch`
+//   * 4. `git checkout`
+//   */
+//  fun clone(
+//    repoDir: File,
+//    remoteUri: String,
+//    origin: String? = defaultOrigin,
+//    depth: Int? = null,
+//    branch: String? = null,
+//  ): String {
+//
+//    var output = ""
+//
+//    output += init(repoDir)
+//    output += remoteAdd(repoDir, remoteUri = remoteUri, origin = origin)
+//    output += fetch(repoDir, depth = depth)
+//    if (!branch.isNullOrBlank())
+//      output += checkout(repoDir, branch = branch)
+//
+//    return output
+//  }
 
 // public  fun init(
 //    repoDir: File,
@@ -79,16 +147,16 @@ abstract class GitService @Inject constructor(
     origin: String? = defaultOrigin,
     force: Boolean = false,
   ): String {
-    // "track without -b implies creation" -> will guess name after last /
-
     val trackFlag = when {
       origin.isNullOrBlank() -> "      -b $branch"
       else                   -> " --track $origin/$branch"
+      //                         track without -b implies creation, git will guess branch name
     }.trim()
 
     val forceFlag = if (force) "--force" else ""
 
-    return repoDir git "checkout $trackFlag $forceFlag"
+    val result = repoDir git "checkout $trackFlag $forceFlag ."
+    return result.getAndLog()
   }
 
 
@@ -100,7 +168,8 @@ abstract class GitService @Inject constructor(
   ): String {
     val forceFlag = if (force) "--force" else ""
 
-    return repoDir git "checkout --orphan $branch $forceFlag"
+    val result = repoDir git "checkout --orphan $branch $forceFlag"
+    return result.getAndLog()
   }
 
 
@@ -123,58 +192,124 @@ abstract class GitService @Inject constructor(
     val forceFlag = if (force) "--force" else ""
     val directoriesFlag = if (directories) "-d" else ""
 
-    return repoDir git "clean $forceFlag $directoriesFlag"
+    val result = repoDir git "clean $forceFlag $directoriesFlag"
+    return result.getAndLog()
   }
 
 
+  /**
+   * @param[message] The raw message. Line breaks and quot marks `"` will be escaped.
+   */
   fun commit(
     repoDir: File,
     message: String,
-    addAll: Boolean = true,
   ): String {
     require(message.isNotBlank()) { "commit message must not be blank" }
-    val allFlag = if (addAll) "--all" else ""
 
-    return repoDir git "commit $allFlag --message $message"
+    val escapedMessage = message
+      .trim()
+      .replace('\"', '\'')
+      .lines()
+      .joinToString(separator = " ") { line -> "-m \"${line}\"" }
+
+    return (repoDir git "commit $escapedMessage").getAndLog()
   }
 
 
+  fun addAll(
+    repoDir: File,
+  ): String = (repoDir git "add --all").getAndLog()
+
+
+  // https://git-scm.com/docs/git-push
   fun push(
     repoDir: File,
     origin: String? = defaultOrigin,
-  ): String = repoDir git "push $origin"
+    head: Boolean = true,
+  ): String {
+    val headFlag = if (head) "HEAD" else ""
+
+    return (repoDir git "push $origin $headFlag").getAndLog()
+  }
 
 
-  fun configGet(
+  private fun configGet(
     repoDir: File,
     property: String,
-  ): String = repoDir git "config --get $property"
+  ): Provider<String> = providers.provider {
+    runCatching {
+      val result = repoDir git "config --get $property"
+      result.standardOutput.asText.get().trim()
+    }.getOrElse { "" }
+  }
+
+
+  fun configGetRemoteOriginUrl(
+    repoDir: File,
+    origin: String? = defaultOrigin,
+  ): Provider<String> = configGet(repoDir, "remote.${origin}.url")
 
 
   fun doesBranchExistOnRemote(
     repoDir: File,
     branch: String,
     origin: String? = defaultOrigin,
-  ): Boolean {
+  ): Provider<Boolean> {
     val result = repoDir git "ls-remote --heads $origin $branch"
-    return result.isNotBlank()
+    return result.standardOutput.asText.map { it.toBoolean() }
   }
 
 
   private infix fun File.git(
     cmd: String
-  ): String {
-    val dir = this
-    val result = executor.execCapture {
-      executable(gitExec)
-      workingDir(dir.canonicalPath)
-      commandLine(
-        parseSpaceSeparatedArgs("$gitExec $cmd")
-      )
+  ): ExecOutput {
+    logger.lifecycle("GitService git exec $canonicalPath $gitExec $cmd")
+    return providers.exec {
+//      isIgnoreExitValue = true
+      workingDir(canonicalPath)
+      commandLine(parseSpaceSeparatedArgs("$gitExec $cmd"))
     }
-    logger.log(logLevel, result.output)
-    return result.output
+//    val result = executor.execCapture(throwError = true) {
+//      executable(gitExec)
+//      workingDir(dir.canonicalPath)
+//      commandLine(
+//        parseSpaceSeparatedArgs("$gitExec $cmd")
+//      )
+//    }
+//    logger.log(
+//      logLevel,
+//      """
+//        |---
+//        |git exec [${result.exitValue}]
+//        |  cmd: $cmd
+//        |  dir: ${dir.canonicalPath}
+//        |  result:
+//        |${result.output.prependIndent("  ")}
+//        |
+//      """.trimMargin()
+//    )
+//    if (result.exitValue != 0) error("git command $cmd failed $result")
+//    return result.output
   }
+
+
+  private fun ExecOutput.getAndLog(): String {
+    val stdOut = standardOutput.asText.orNull
+    val stdErr = standardError.asText.orNull
+    val result = result.orNull
+
+    logger.log(
+      logLevel,
+      """
+        |---
+        |  git exec [${result?.exitValue}]
+        |  result: ${(stdOut ?: stdErr ?: "null").prependIndent("    ")}
+        |---  
+      """.trimMargin()
+    )
+    return stdOut ?: stdErr ?: ""
+  }
+
 
   private val gitExec: String
     get() = parameters.gitExec.get()
@@ -182,13 +317,13 @@ abstract class GitService @Inject constructor(
   private val defaultOrigin: String?
     get() = parameters.defaultOrigin.orNull
 
-  private val porcelainFlag: String
-    get() = parameters
-      .porcelainEnabled.getOrElse(false)
-      .let { if (it) "--porcelain" else "" }
+//  private val porcelainFlag: String
+//    get() = parameters
+//      .porcelainEnabled.getOrElse(false)
+//      .let { if (it) "--porcelain" else "" }
 
   private val logLevel: LogLevel
-    get() = parameters.logLevel.orNull ?: LogLevel.DEBUG
+    get() = parameters.logLevel.orNull ?: LogLevel.LIFECYCLE
 
 
   companion object {

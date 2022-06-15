@@ -3,6 +3,9 @@ package dev.adamko.vcsmvnpub.util
 import java.io.ByteArrayOutputStream
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.process.ExecOperations
 import org.gradle.process.ExecResult
 import org.gradle.process.ExecSpec
@@ -25,8 +28,10 @@ internal fun ExecOperations.execCapture(
   }
 
   return if (result.exitValue != 0) {
-    logger.error(output)
-    if (throwError) result.rethrowFailure()
+    if (throwError) {
+      logger.error(output)
+      result.rethrowFailure()
+    }
     ExecCaptureResult.Error(output, result)
   } else {
     ExecCaptureResult.Success(output, result)
@@ -43,4 +48,35 @@ internal sealed class ExecCaptureResult(
 
   internal class Error(output: String, result: ExecResult) : ExecCaptureResult(output, result)
 
+}
+
+
+@Suppress("UnstableApiUsage") // providers.exec is incubating
+internal fun ProviderFactory.execCapture(
+  throwError: Boolean = false,
+  configure: ExecSpec.() -> Unit,
+): Provider<ExecCaptureResult> {
+
+  val (resultProvider, output) = ByteArrayOutputStream().use { os ->
+    exec {
+      isIgnoreExitValue = true
+      standardOutput = os
+      errorOutput = os
+      configure()
+    } to os.toString()
+  }
+
+  resultProvider.standardError.asText
+
+  return resultProvider.result.map { result ->
+    if (result.exitValue != 0) {
+      if (throwError) {
+        logger.error(output)
+        result.rethrowFailure()
+      }
+      ExecCaptureResult.Error(output, result)
+    } else {
+      ExecCaptureResult.Success(output, result)
+    }
+  }
 }
