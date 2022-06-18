@@ -7,6 +7,7 @@ import org.gradle.api.tasks.Optional
 
 interface VcsMvnGitRepo {
 
+  /** The location of the remote Git repo */
   @get:Input
   val remoteUri: Property<String>
 
@@ -29,7 +30,7 @@ interface VcsMvnGitRepo {
 
 
   enum class BranchCreateMode {
-    /** If the branch does not exist, create it as an orphan */
+    /** If [VcsMvnGitRepo.artifactBranch] does not exist, create it as an orphan branch */
     CreateOrphan,
     /** Do not create [VcsMvnGitRepo.artifactBranch] if it does not exist */
     Disabled,

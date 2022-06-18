@@ -36,6 +36,9 @@ abstract class GitService @Inject constructor(
     val defaultOrigin: Property<String>
     //    val porcelainEnabled: Property<Boolean>
     val logLevel: Property<LogLevel>
+
+    /** Set `--git-dir` for each command, to ensure each command is run in the correct repo. */
+    val gitDirFlagEnabled: Property<Boolean>
   }
 
 
@@ -263,11 +266,14 @@ abstract class GitService @Inject constructor(
   private infix fun File.git(
     cmd: String
   ): ExecOutput {
-    logger.lifecycle("GitService git exec $canonicalPath $gitExec $cmd")
+
+    val gitDirFlag = if (gitDirFlagEnabled) "--git-dir=$canonicalPath/.git" else ""
+
+    logger.lifecycle("GitService git exec $canonicalPath $gitExec $gitDirFlag $cmd")
     return providers.exec {
 //      isIgnoreExitValue = true
       workingDir(canonicalPath)
-      commandLine(parseSpaceSeparatedArgs("$gitExec $cmd"))
+      commandLine(parseSpaceSeparatedArgs("$gitExec $gitDirFlag $cmd"))
     }
 //    val result = executor.execCapture(throwError = true) {
 //      executable(gitExec)
@@ -317,13 +323,16 @@ abstract class GitService @Inject constructor(
   private val defaultOrigin: String?
     get() = parameters.defaultOrigin.orNull
 
+  private val logLevel: LogLevel
+    get() = parameters.logLevel.orNull ?: LogLevel.LIFECYCLE
+
+  private val gitDirFlagEnabled: Boolean
+    get() = parameters.gitDirFlagEnabled.getOrElse(false)
+
 //  private val porcelainFlag: String
 //    get() = parameters
 //      .porcelainEnabled.getOrElse(false)
 //      .let { if (it) "--porcelain" else "" }
-
-  private val logLevel: LogLevel
-    get() = parameters.logLevel.orNull ?: LogLevel.LIFECYCLE
 
 
   companion object {

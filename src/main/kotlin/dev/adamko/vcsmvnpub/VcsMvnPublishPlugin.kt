@@ -13,6 +13,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
@@ -29,7 +30,7 @@ import org.gradle.kotlin.dsl.withType
 
 abstract class VcsMvnPublishPlugin @Inject constructor(
   private val providers: ProviderFactory,
-//  private val objects: ObjectFactory,
+  private val objects: ObjectFactory,
 //  private val files: FileOperations,
 //  private val fileSys: FileSystemOperations,
 ) : Plugin<Project>, ProviderFactory by providers {
@@ -39,6 +40,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
 
 
   override fun apply(project: Project) {
+    log.lifecycle("configuring GitRepo")
 
     project.plugins.withType<PublishingPlugin>().configureEach {
       log.lifecycle("applying $PROJECT_NAME")
@@ -47,7 +49,6 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
 
       val gitServiceProvider = project.gradle.registerGitService(settings)
 
-      log.lifecycle("configuring GitRepo")
 
       settings.gitRepos.all {
         project.configureGitRepo(settings, this, gitServiceProvider)

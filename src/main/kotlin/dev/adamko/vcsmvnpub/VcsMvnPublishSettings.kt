@@ -12,6 +12,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.kotlin.dsl.newInstance
 
+
 abstract class VcsMvnPublishSettings @Inject constructor(
   private val objects: ObjectFactory,
 ) {
