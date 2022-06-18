@@ -12,7 +12,6 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.SkipWhenEmpty
 import org.gradle.api.tasks.TaskAction
 
 
@@ -28,6 +27,10 @@ abstract class GitRepoPublishTask : VcsMvnPublishTask() {
   @get:Input
   @get:Optional
   abstract val commitMessage: Property<Transformer<String, GitRepoPublishTask>>
+
+  @get:Input
+  @get:Optional
+  abstract val gitPushToRemoteEnabled: Property<Boolean>
 
   @get:Input
 //  @get:Optional
@@ -57,22 +60,29 @@ abstract class GitRepoPublishTask : VcsMvnPublishTask() {
     val localRepoDir: File = localRepoDir.asFile.get()
     val commitMessage: String = commitMessage.map { it.transform(this) }.getOrElse(commitMessage())
 
-    logger.lifecycle("committing localRepo $localRepoDir commit message $commitMessage")
+    fun currentBranch() = "current-branch:" + gitService.getCurrentBranch(localRepoDir).get()
+
+    logger.lifecycle("[GitRepoPublishTask] committing localRepo $localRepoDir commit message $commitMessage ${currentBranch()}")
 
     gitService.fetch(localRepoDir)
 
+    logger.lifecycle("[GitRepoPublishTask] adding all files ${currentBranch()}")
     gitService.addAll(
       localRepoDir,
     )
 
+    logger.lifecycle("[GitRepoPublishTask] committing ${currentBranch()}")
     gitService.commit(
       localRepoDir,
       commitMessage,
     )
 
-    gitService.push(
-      localRepoDir,
-    )
+    if (gitPushToRemoteEnabled.orNull == true) {
+      logger.lifecycle("[GitRepoPublishTask] pushing to remote")
+      gitService.push(localRepoDir)
+    } else {
+      logger.lifecycle("[GitRepoPublishTask] skipping push to remote")
+    }
   }
 
 

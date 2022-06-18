@@ -38,6 +38,12 @@ abstract class VcsMvnPublishSettings @Inject constructor(
   @get:Optional
   abstract val gitExec: Property<String>
 
+
+  /** Automatically push, once committed. */
+  @get:Input
+  @get:Optional
+  abstract val gitPushToRemoteEnabled: Property<Boolean>
+
   /**
    * vcs-mvn-publish will guess a default remote URL for all [gitRepos] based on the provided
    * directory. This defaults to [org.gradle.api.Project.getRootDir].
@@ -53,7 +59,7 @@ abstract class VcsMvnPublishSettings @Inject constructor(
   abstract val gitRepos: DomainObjectSet<VcsMvnGitRepo>
 
   fun gitRepo(
-    configure: VcsMvnGitRepo.() -> Unit,
+    configure: VcsMvnGitRepo.() -> Unit= {} ,
   ) {
     logger.lifecycle("Creating GitRepo")
     val repo = objects.newInstance<VcsMvnGitRepo>().apply {

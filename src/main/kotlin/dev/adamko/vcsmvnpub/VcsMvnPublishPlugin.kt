@@ -13,7 +13,6 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
-import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
@@ -30,9 +29,6 @@ import org.gradle.kotlin.dsl.withType
 
 abstract class VcsMvnPublishPlugin @Inject constructor(
   private val providers: ProviderFactory,
-  private val objects: ObjectFactory,
-//  private val files: FileOperations,
-//  private val fileSys: FileSystemOperations,
 ) : Plugin<Project>, ProviderFactory by providers {
 
 
@@ -49,7 +45,6 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
 
       val gitServiceProvider = project.gradle.registerGitService(settings)
 
-
       settings.gitRepos.all {
         project.configureGitRepo(settings, this, gitServiceProvider)
       }
@@ -65,9 +60,10 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       .apply {
         localPublishDir.convention(
           rootProject.layout.projectDirectory
-            .dir(".gradle/$BASE_REPO_NAME/${project.pathEscaped}")
+            .dir(".gradle/$BASE_REPO_NAME/${rootProject.pathEscaped}")
         )
         gitExec.convention("git")
+        gitPushToRemoteEnabled.convention(true)
         gitProjectRepoDir.convention { rootProject.layout.projectDirectory.asFile }
       }
   }
@@ -89,10 +85,10 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
 
     // register an 'init-repo' task specifically for this GitRepo
     val gitRepoInitTask = project.tasks.register<GitRepoInitTask>(GitRepoInitTask.NAME) {
-      artifactBranch.convention(gitRepo.artifactBranch)
+      branch.convention(gitRepo.artifactBranch)
       localRepoDir.convention(gitRepo.localRepoDir)
       remoteUri.convention(gitRepo.remoteUri)
-      artifactBranchCreateMode.convention(gitRepo.artifactBranchCreateMode)
+      branchCreateMode.convention(gitRepo.artifactBranchCreateMode)
 
       gitService.convention(gitServiceProvider)
     }
@@ -121,6 +117,9 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
         log.lifecycle("found matching ${publishTask.name}")
         matching
       }
+    val gitRepoPublishingTasksProvider = providers.provider {
+      gitRepoPublishingTasks
+    }
 
     // publishing depends on the git repo being set up and checked out
     gitRepoPublishingTasks.configureEach {
@@ -134,7 +133,8 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       dependsOn(tasks.provider.publish)
       gitService.set(gitServiceProvider)
       localRepoDir.set(gitRepo.localRepoDir)
-      publishTasks.addAll(gitRepoPublishingTasks)
+      publishTasks.addAllLater(gitRepoPublishingTasksProvider)
+      gitPushToRemoteEnabled.convention(settings.gitPushToRemoteEnabled)
     }
   }
 
@@ -153,6 +153,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       parameters {
         gitExec.set(settings.gitExec)
         defaultOrigin.set("origin")
+        gitDirFlagEnabled.set(true)
       }
     }
   }

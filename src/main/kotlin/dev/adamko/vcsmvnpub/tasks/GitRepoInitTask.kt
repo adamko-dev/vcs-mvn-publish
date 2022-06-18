@@ -5,11 +5,9 @@ import dev.adamko.vcsmvnpub.GitService
 import dev.adamko.vcsmvnpub.VcsMvnGitRepo
 import java.io.File
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.FileTree
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 
 
@@ -20,12 +18,12 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
 
   /** The branch into which artifacts will be committed */
   @get:Input
-  abstract val artifactBranch: Property<String>
+  abstract val branch: Property<String>
 
   @get:Input
-  abstract val artifactBranchCreateMode: Property<VcsMvnGitRepo.BranchCreateMode>
+  abstract val branchCreateMode: Property<VcsMvnGitRepo.BranchCreateMode>
 
-  @get:OutputDirectory
+  @get:Internal
   abstract val localRepoDir: DirectoryProperty
 
   @get:Internal
@@ -43,29 +41,41 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
 
     val gitService = gitService.get()
 
-    val localRepoTree: FileTree = localRepoDir.asFileTree
     val localRepoFile: File = localRepoDir.asFile.get()
+    val localRepoPath: String = localRepoFile.canonicalPath
 
     val remoteUri: String = remoteUri.get()
-    val branch: String = artifactBranch.get()
+    val branch: String = branch.get()
 
-    require(
-      localRepoTree.matching { exclude(".git") }.isEmpty
-    ) {
-      val topFiles = localRepoFile.walk().maxDepth(1).map { it.name }.joinToString(", ")
-      val gitStatus = gitService.status(localRepoFile)
-
-      """
-        |localRepoDir must be an up-to-date git directory, or empty.
-        |
-        |Contained files: $topFiles
-        |git status: $gitStatus
-        |
-        |Refusing to automatically overwrite.
-        |
-        |Please confirm that path ${localRepoFile.canonicalPath} is correct, and manually refresh or delete it.
-      """.trimMargin()
+    if (!localRepoFile.exists()) {
+      require(localRepoFile.mkdirs()) {
+        "could not initialise repo directory $localRepoPath"
+      }
     }
+
+    if (!gitService.isInsideWorkTree(localRepoFile).get()) {
+      require(
+        localRepoDir.asFileTree.matching { exclude(".git") }.isEmpty
+      ) {
+        val topFiles = localRepoFile.walk().maxDepth(1).map { it.name }.joinToString(", ")
+        val gitStatus = gitService.status(localRepoFile).trim().prependIndent("  ║ ")
+
+        """
+          |Attempted to initialise a Git directory, but the provided directory contained unexpected files.
+          |
+          |localRepoDir must be an up-to-date git directory, or empty.
+          |
+          |Contained files: $topFiles
+          |git status: 
+          |$gitStatus
+          |
+          |Refusing to automatically overwrite.
+          |
+          |Please confirm that path $localRepoPath is correct, and manually refresh or delete it.
+        """.trimMargin()
+      }
+    }
+    fun currentBranch() = "current-branch:" + gitService.getCurrentBranch(localRepoFile).get()
 
     logger.lifecycle("initialising remote '$remoteUri' into local '$localRepoFile'")
 
@@ -73,18 +83,19 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
       repoDir = localRepoFile,
 //      branch = branch,
     )
+    logger.lifecycle("initialized repository ${currentBranch()}")
 
-    val remoteOriginUrl = gitService.configGetRemoteOriginUrl(localRepoFile).getOrElse("")
+    val actualRemoteUri = gitService.configGetRemoteOriginUrl(localRepoFile).getOrElse("")
 
     when {
-      remoteOriginUrl.isBlank()    -> // remote isn't defined
+      actualRemoteUri.isBlank()    -> // remote isn't defined
         gitService.remoteAdd(
           repoDir = localRepoFile,
           remoteUri = remoteUri,
         )
 
-      remoteOriginUrl != remoteUri ->
-        error("invalid remote, expected URL $remoteUri but was $remoteOriginUrl")
+      actualRemoteUri != remoteUri ->
+        error("remote already defined. expected URL $remoteUri but was $actualRemoteUri")
     }
 
     gitService.fetch(
@@ -98,39 +109,33 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
     ).get()
 
     if (branchExists) {
-      logger.lifecycle("checking out existing $branch in $localRepoFile")
-      gitService.checkout(
+      logger.lifecycle("switching to branch '$branch' ${currentBranch()}")
+      gitService.switch(
         repoDir = localRepoFile,
         branch = branch,
       )
+      logger.lifecycle("switched to branch '$branch' ${currentBranch()}")
     } else {
-      logger.lifecycle("checking out new branch $branch in $localRepoFile")
-      when (artifactBranchCreateMode.get()) {
+      logger.lifecycle("branch does not exist on remote - checking out new branch '$branch 'in $localRepoFile ${currentBranch()}")
+      when (branchCreateMode.get()) {
         VcsMvnGitRepo.BranchCreateMode.CreateOrphan -> {
-          gitService.checkoutOrphan(
+          gitService.switchCreateOrphan(
             localRepoFile,
             branch,
-            force = true
           )
-
         }
         VcsMvnGitRepo.BranchCreateMode.Disabled     -> error(
-          "branch $branch does not exist in $remoteUri, and artifactBranchCreateMode is $artifactBranchCreateMode"
+          "branch $branch does not exist in $remoteUri, and artifactBranchCreateMode is $branchCreateMode"
         )
       }
     }
 
-    logger.lifecycle("cleaning $branch in $localRepoFile")
-    gitService.clean(
+    gitService.fetch(
       repoDir = localRepoFile,
-      force = true,
-      directories = true,
+      depth = 1,
     )
 
-//    gitService.commit(
-//      repoDir = localRepoFile,
-//      message = "${VcsMvnPublishPlugin.PROJECT_NAME} initialized repo",
-//    )
+    logger.lifecycle("GitRepoInitTask finished ${currentBranch()}")
   }
 
 
