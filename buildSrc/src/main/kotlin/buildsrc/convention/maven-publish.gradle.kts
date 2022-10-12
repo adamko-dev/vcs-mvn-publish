@@ -7,6 +7,7 @@ import buildsrc.ext.signing
 
 
 plugins {
+  id("buildsrc.convention.base")
   `maven-publish`
   signing
 }
@@ -28,13 +29,13 @@ val sonatypeRepositoryReleaseUrl: Provider<String> = provider {
 
 
 val signingKeyId: Provider<String> =
-  providers.gradleProperty("signing.keyId")
+  providers.gradleProperty("signingKeyId")
 val signingKey: Provider<String> =
-  providers.gradleProperty("signing.key")
+  providers.gradleProperty("signingKey")
 val signingPassword: Provider<String> =
-  providers.gradleProperty("signing.password")
+  providers.gradleProperty("signingPassword")
 val signingSecretKeyRingFile: Provider<String> =
-  providers.gradleProperty("signing.secretKeyRingFile")
+  providers.gradleProperty("signingSecretKeyRingFile")
 
 
 tasks.withType<AbstractPublishToMaven>().configureEach {
@@ -65,9 +66,9 @@ signing {
 publishing {
   repositories {
     // publish to local dir, for testing
-//    maven(rootProject.layout.buildDirectory.dir("maven-internal")) {
-//      name = "maven-internal"
-//    }
+    maven(rootProject.layout.buildDirectory.dir("maven-project-local")) {
+      name = "MavenProjectLocal"
+    }
 
 //    if (sonatypeRepositoryCredentials.isPresent) {
 //      maven(sonatypeRepositoryReleaseUrl) {

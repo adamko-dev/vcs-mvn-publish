@@ -1,15 +1,10 @@
-# @formatter:off
-
 [versions]
 
-kotlin = "1.7.0"
-jvm    = "11"
-
-kotlinx-serialization = "1.3.3"
+jvm = "11"
 
 ###########
 [libraries]
 ###########
 
-kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom", version.ref = "kotlin" }
-kotlin-utilIO = { group = "org.jetbrains.kotlin", name = "kotlin-util-io" }
+kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom" }
+kotlin-utilIO = { module = "org.jetbrains.kotlin:kotlin-util-io" }

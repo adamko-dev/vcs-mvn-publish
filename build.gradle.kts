@@ -30,7 +30,7 @@ gitVersioning.apply {
 
 
 dependencies {
-  implementation(platform(libs.kotlin.bom))
+  implementation(platform("org.jetbrains.kotlin:kotlin-bom:$embeddedKotlinVersion"))
   implementation(libs.kotlin.utilIO)
 
 //  implementation("org.eclipse.jgit:org.eclipse.jgit:6.2.0.202206071550-r")

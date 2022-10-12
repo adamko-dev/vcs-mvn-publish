@@ -7,27 +7,31 @@ plugins {
 
 
 dependencies {
-
-  val kotlinVersion = libs.versions.kotlin.get()
-//  val kotlinVersion = embeddedKotlinVersion
-  implementation(enforcedPlatform("org.jetbrains.kotlin:kotlin-bom:$kotlinVersion"))
+  implementation(platform("org.jetbrains.kotlin:kotlin-bom:$embeddedKotlinVersion"))
   implementation("org.jetbrains.kotlin:kotlin-serialization")
   implementation("org.jetbrains.kotlin:kotlin-reflect")
-  implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+  implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$embeddedKotlinVersion")
 
   val gitVersioningPluginVersion = "5.2.0"
   implementation("me.qoomon:gradle-git-versioning-plugin:$gitVersioningPluginVersion")
 
-  implementation("com.gradle.publish:plugin-publish-plugin:1.0.0-rc-2")
+  implementation("com.gradle.publish:plugin-publish-plugin:1.0.0")
 }
 
 
-val gradleJvmTarget = "1.8"
-val gradleJvmVersion = "8"
+val gradleJvmTarget = "11"
 
+kotlin {
+  jvmToolchain {
+    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(gradleJvmTarget))
+  }
+
+  kotlinDslPluginOptions {
+    jvmTarget.set(gradleJvmTarget)
+  }
+}
 
 tasks.withType<KotlinCompile>().configureEach {
-
   kotlinOptions {
     jvmTarget = gradleJvmTarget
   }
@@ -37,15 +41,4 @@ tasks.withType<KotlinCompile>().configureEach {
     "-opt-in=kotlin.ExperimentalStdlibApi",
     "-opt-in=kotlin.time.ExperimentalTime",
   )
-}
-
-
-kotlin {
-  jvmToolchain {
-    languageVersion.set(JavaLanguageVersion.of(gradleJvmVersion))
-  }
-
-  kotlinDslPluginOptions {
-    jvmTarget.set(gradleJvmTarget)
-  }
 }
