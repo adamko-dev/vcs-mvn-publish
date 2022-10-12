@@ -7,6 +7,7 @@ import javax.inject.Inject
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.attributes.Attribute
 import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -49,6 +50,31 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
         project.configureGitRepo(settings, this, gitServiceProvider)
       }
 
+    }
+
+
+    val vcsMvnAttribute = Attribute.of("dev.adamko.vcsmvnpub", String::class.java)
+    project.dependencies.attributesSchema {
+      attribute(vcsMvnAttribute)
+    }
+
+
+    project.configurations.create("vcsMvnPublicationsProvider") {
+      description = "provide publications to the root-project"
+      isCanBeConsumed = true
+      isCanBeResolved = false
+      attributes {
+        attribute(vcsMvnAttribute, "publication")
+      }
+    }
+
+    project.configurations.create("vcsMvnPublications") {
+      description = "vcs-mvn consumer"
+      isCanBeConsumed = false
+      isCanBeResolved = true
+      attributes {
+        attribute(vcsMvnAttribute, "publication")
+      }
     }
   }
 

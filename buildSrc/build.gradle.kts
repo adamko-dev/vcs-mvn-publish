@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   `kotlin-dsl`
-  kotlin("jvm") version "1.7.0"
+  kotlin("jvm") version embeddedKotlinVersion
 }
 
 
@@ -24,23 +24,18 @@ dependencies {
 
 val gradleJvmTarget = "1.8"
 val gradleJvmVersion = "8"
-val gradleKotlinTarget = "1.6"
 
 
 tasks.withType<KotlinCompile>().configureEach {
 
   kotlinOptions {
     jvmTarget = gradleJvmTarget
-    apiVersion = gradleKotlinTarget
-    languageVersion = gradleKotlinTarget
   }
 
   kotlinOptions.freeCompilerArgs += listOf(
     "-opt-in=kotlin.RequiresOptIn",
     "-opt-in=kotlin.ExperimentalStdlibApi",
     "-opt-in=kotlin.time.ExperimentalTime",
-//    "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-//    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
   )
 }
 
