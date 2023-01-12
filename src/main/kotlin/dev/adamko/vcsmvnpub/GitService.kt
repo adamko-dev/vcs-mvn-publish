@@ -27,7 +27,7 @@ abstract class GitService @Inject constructor(
     /**
      * The full path of the git executable.
      *
-     * If `git` is already on `PATH`, then this can just be `git`
+     * If `git` is already on `PATH`, then the value can just be `git`
      *
      * @see dev.adamko.vcsmvnpub.VcsMvnPublishSettings.gitExec
      */

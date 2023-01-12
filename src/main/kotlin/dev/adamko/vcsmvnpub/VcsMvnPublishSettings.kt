@@ -48,7 +48,7 @@ abstract class VcsMvnPublishSettings @Inject constructor(
    * vcs-mvn-publish will guess a default remote URL for all [gitRepos] based on the provided
    * directory. This defaults to [org.gradle.api.Project.getRootDir].
    *
-   * To disable this behaviour, set this property to null.
+   * To disable this behaviour, set this property to `null`.
    */
   @get:Input
   @get:Optional
