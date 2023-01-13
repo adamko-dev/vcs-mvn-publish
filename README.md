@@ -1,4 +1,4 @@
-# vcs-mvn-publish
+# vcs mvn publish
 
 Publish Maven artifacts to a Git repository. 
 
