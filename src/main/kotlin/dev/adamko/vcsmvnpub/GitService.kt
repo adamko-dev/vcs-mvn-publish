@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.util.parseSpaceSeparatedArgs
 
 @Suppress("UnstableApiUsage") // providers.exec is incubating
 abstract class GitService @Inject constructor(
-  private val executor: ExecOperations,
+//  private val executor: ExecOperations,
   private val providers: ProviderFactory,
 ) : BuildService<GitService.Params> {
 

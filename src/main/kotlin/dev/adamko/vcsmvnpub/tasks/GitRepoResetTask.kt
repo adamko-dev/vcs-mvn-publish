@@ -63,6 +63,6 @@ abstract class GitRepoResetTask : VcsMvnPublishTask() {
 
 
   companion object {
-    const val NAME = "gitRepoReset"
+    const val TASK_NAME = "gitRepoReset"
   }
 }

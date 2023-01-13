@@ -140,6 +140,6 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
 
 
   companion object {
-    const val NAME = "gitRepoInit"
+    const val TASK_NAME = "gitRepoInit"
   }
 }

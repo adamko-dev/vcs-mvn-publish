@@ -1,11 +1,12 @@
 package dev.adamko.vcsmvnpub
 
+import org.gradle.api.Named
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 
-interface VcsMvnGitRepo {
+interface VcsMvnGitRepo: Named {
 
   /** The location of the remote Git repo */
   @get:Input
