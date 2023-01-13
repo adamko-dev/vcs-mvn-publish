@@ -25,18 +25,19 @@ fun ProviderFactory.credentialsAction(
 
 /** exclude generated Gradle code, so it doesn't clog up search results */
 fun IdeaModule.excludeGeneratedGradleDsl(layout: ProjectLayout) {
+
+  val generatedSrcDirs = listOf(
+    "kotlin-dsl-accessors",
+    "kotlin-dsl-external-plugin-spec-builders",
+    "kotlin-dsl-plugins",
+  )
+
   excludeDirs.addAll(
-    layout.files(
-      "buildSrc/build/generated-sources/kotlin-dsl-accessors",
-      "buildSrc/build/generated-sources/kotlin-dsl-accessors/kotlin",
-      "buildSrc/build/generated-sources/kotlin-dsl-accessors/kotlin/gradle",
-      "buildSrc/build/generated-sources/kotlin-dsl-external-plugin-spec-builders",
-      "buildSrc/build/generated-sources/kotlin-dsl-external-plugin-spec-builders/kotlin",
-      "buildSrc/build/generated-sources/kotlin-dsl-external-plugin-spec-builders/kotlin/gradle",
-      "buildSrc/build/generated-sources/kotlin-dsl-plugins",
-      "buildSrc/build/generated-sources/kotlin-dsl-plugins/kotlin",
-      "buildSrc/build/generated-sources/kotlin-dsl-plugins/kotlin/dev",
-      "buildSrc/build/pluginUnderTestMetadata",
-    )
+    layout.projectDirectory.asFile.walk()
+      .filter { it.isDirectory }
+      .filter { it.parentFile.name in generatedSrcDirs }
+      .flatMap { file ->
+        file.walk().maxDepth(1).filter { it.isDirectory }.toList()
+      }
   )
 }
