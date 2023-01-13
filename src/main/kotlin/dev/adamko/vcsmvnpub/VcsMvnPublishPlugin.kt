@@ -11,7 +11,6 @@ import javax.inject.Inject
 import org.gradle.api.NamedDomainObjectProvider
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.attributes.AttributeContainer
 import org.gradle.api.attributes.Category
@@ -26,7 +25,6 @@ import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.publish.plugins.PublishingPlugin
-import org.gradle.api.tasks.TaskContainer
 import org.gradle.kotlin.dsl.*
 
 
@@ -78,7 +76,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       val gitRepoPublishingTasks = project.tasks
         .withType<PublishToMavenRepository>()
         .matching { publishTask ->
-          val matching = publishTask.repository.url.sameFileAs(gitRepo.localRepoDir)
+          val matching = publishTask.repository?.url.sameFileAs(gitRepo.localRepoDir)
           log.lifecycle("found matching ${publishTask.name}")
           matching
         }
@@ -287,8 +285,8 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       get() = extensions.getByType()
 
 
-    private fun URI.sameFileAs(dir: DirectoryProperty): Boolean =
-      toURL().sameFile(dir.asFile.get().toURI().toURL())
+    private fun URI?.sameFileAs(dir: DirectoryProperty): Boolean =
+      this != null && toURL().sameFile(dir.asFile.get().toURI().toURL())
 
 
 //    private val Project.pathEscaped: String
