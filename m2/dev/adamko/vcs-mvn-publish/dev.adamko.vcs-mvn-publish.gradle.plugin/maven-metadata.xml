@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>dev.adamko.vcs-mvn-publish</groupId>
+  <artifactId>dev.adamko.vcs-mvn-publish.gradle.plugin</artifactId>
+  <versioning>
+    <latest>main-SNAPSHOT</latest>
+    <versions>
+      <version>main-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20230113234910</lastUpdated>
+  </versioning>
+</metadata>
