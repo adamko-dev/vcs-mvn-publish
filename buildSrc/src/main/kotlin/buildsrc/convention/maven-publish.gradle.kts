@@ -9,7 +9,7 @@ import buildsrc.ext.signing
 plugins {
   id("buildsrc.convention.base")
   `maven-publish`
-  signing
+//  signing
 }
 
 val sonatypeRepositoryCredentials: Provider<Action<PasswordCredentials>> =
@@ -49,18 +49,18 @@ tasks.withType<AbstractPublishToMaven>().configureEach {
 }
 
 
-signing {
-  if (sonatypeRepositoryCredentials.isPresent) {
-    if (signingKeyId.isPresent && signingKey.isPresent && signingPassword.isPresent) {
-      useInMemoryPgpKeys(signingKeyId.get(), signingKey.get(), signingPassword.get())
-    } else {
-      useGpgCmd()
-    }
-
-    // sign all publications
-//    sign(publishing.publications)
-  }
-}
+//signing {
+//  if (sonatypeRepositoryCredentials.isPresent) {
+//    if (signingKeyId.isPresent && signingKey.isPresent && signingPassword.isPresent) {
+//      useInMemoryPgpKeys(signingKeyId.get(), signingKey.get(), signingPassword.get())
+//    } else {
+//      useGpgCmd()
+//    }
+//
+//    // sign all publications
+////    sign(publishing.publications)
+//  }
+//}
 
 
 publishing {
