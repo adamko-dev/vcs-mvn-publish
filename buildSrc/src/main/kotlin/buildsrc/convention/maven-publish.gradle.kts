@@ -67,7 +67,7 @@ publishing {
   repositories {
     // publish to local dir, for testing
     maven(rootProject.layout.buildDirectory.dir("maven-project-local")) {
-      name = "MavenProjectLocal"
+      name = "ProjectLocal"
     }
 
 //    if (sonatypeRepositoryCredentials.isPresent) {
