@@ -9,9 +9,9 @@ import org.gradle.plugins.signing.SigningExtension
 
 
 fun MavenPublication.createKotkaStreamsPom(): Unit = pom {
-//  name.set("Kotka Streams - Kotlin for Kafka Streams")
-//  description.set("Using Kotka means a more pleasant experience while using Kafka Streams")
-//  url.set("https://github.com/adamko-dev/kotka-streams")
+  name.set("vcs mvn publish plugin")
+  description.set("Easily share Maven artifacts in Git repos with this Gradle Plugin ")
+  url.set("https://github.com/adamko-dev/vcs-mvn-publish")
 //
 //  licenses {
 //    license {
@@ -26,11 +26,11 @@ fun MavenPublication.createKotkaStreamsPom(): Unit = pom {
 //    }
 //  }
 //
-//  scm {
-//    connection.set("scm:git:git://github.com/adamko-dev/kotka-streams.git")
-//    developerConnection.set("scm:git:ssh://github.com:adamko-dev/kotka-streams.git")
-//    url.set("https://github.com/adamko-dev/kotka-streams")
-//  }
+  scm {
+    connection.set("scm:git:git://github.com/adamko-dev/vcs-mvn-publish.git")
+    developerConnection.set("scm:git:ssh://github.com:adamko-dev/vcs-mvn-publish.git")
+    url.set("https://github.com/adamko-dev/vcs-mvn-publish")
+  }
 }
 
 
