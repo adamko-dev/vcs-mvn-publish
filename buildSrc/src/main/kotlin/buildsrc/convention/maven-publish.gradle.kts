@@ -39,12 +39,18 @@ val signingSecretKeyRingFile: Provider<String> =
 
 
 tasks.withType<AbstractPublishToMaven>().configureEach {
-  // Gradle warns about some signing tasks using publishing task outputs without explicit
-  // dependencies. I'm not going to go through them all and fix them, so here's a quick fix.
+  // Gradle warns about some signing tasks using publishing task outputs without explicit dependencies.
+  // Here's a quick fix.
   dependsOn(tasks.withType<Sign>())
+  mustRunAfter(tasks.withType<Sign>())
+
+  // use a val for the GAV to avoid Gradle Configuration Cache issues
+  val publicationGAV = publication?.run { "$group:$artifactId:$version" }
 
   doLast {
-    logger.lifecycle("[${this.name}] ${project.group}:${project.name}:${project.version}")
+    if (publicationGAV != null) {
+      logger.lifecycle("[task: ${path}] $publicationGAV")
+    }
   }
 }
 
