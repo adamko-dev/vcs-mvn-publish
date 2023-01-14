@@ -10,14 +10,14 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
-import org.gradle.process.ExecOperations
 import org.gradle.process.ExecOutput
 import org.jetbrains.kotlin.util.parseSpaceSeparatedArgs
 
-
+/**
+ * Execute Git commands on the local machine.
+ */
 @Suppress("UnstableApiUsage") // providers.exec is incubating
 abstract class GitService @Inject constructor(
-//  private val executor: ExecOperations,
   private val providers: ProviderFactory,
 ) : BuildService<GitService.Params> {
 
@@ -33,8 +33,9 @@ abstract class GitService @Inject constructor(
      */
     val gitExec: Property<String>
 
+    /** The default value of an origin repo, if required by a Git command. */
     val defaultOrigin: Property<String>
-    //    val porcelainEnabled: Property<Boolean>
+
     val logLevel: Property<LogLevel>
 
     /** Set `--git-dir` for each command, to ensure each command is run in the correct repo. */
@@ -145,7 +146,7 @@ abstract class GitService @Inject constructor(
     return result.getAndLog()
   }
 
-
+  /** Switch to another branch, potentially creating it */
   fun switch(
     repoDir: File,
 //    origin: String? = defaultOrigin,
@@ -156,6 +157,7 @@ abstract class GitService @Inject constructor(
   }
 
 
+  /** Switch to another branch as an orphan (disconnected history), potentially creating it */
   fun switchCreateOrphan(
     repoDir: File,
     branch: String,
@@ -189,7 +191,7 @@ abstract class GitService @Inject constructor(
 
 
   /**
-   * @param[message] The raw message. Line breaks and quot marks `"` will be escaped.
+   * @param[message] The raw message. Line breaks and quotes `"` will be escaped.
    */
   fun commit(
     repoDir: File,
@@ -269,6 +271,10 @@ abstract class GitService @Inject constructor(
 
 
   /**
+   * Determine the current branch by parsing the branch status.
+   *
+   * Branch status example:
+   *
    * ```shell
    * > git status --branch --porcelain=v2
    * # branch.oid eb2eb732933f0e93d7cc4ad470d6ee2e95832979
@@ -290,6 +296,7 @@ abstract class GitService @Inject constructor(
   }.getOrElse { providers.provider { "" } }
 
 
+  /** Execute a Git command in the provided directory */
   private infix fun File.git(
     cmd: String
   ): ExecOutput {
@@ -366,12 +373,6 @@ abstract class GitService @Inject constructor(
 
   private val gitDirFlagEnabled: Boolean
     get() = parameters.gitDirFlagEnabled.getOrElse(false)
-
-//  private val porcelainFlag: String
-//    get() = parameters
-//      .porcelainEnabled.getOrElse(false)
-//      .let { if (it) "--porcelain" else "" }
-
 
   companion object {
     const val NAME: String = "GitService"
