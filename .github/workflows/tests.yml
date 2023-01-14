@@ -28,7 +28,6 @@ jobs:
           - windows-latest
         task:
           - check
-          - build
       fail-fast: false
     uses: ./.github/workflows/gradle_task.yml
     with:
