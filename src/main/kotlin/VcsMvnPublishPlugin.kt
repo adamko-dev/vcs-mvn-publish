@@ -92,6 +92,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
       // create a task to commit and push the artifacts
       project.tasks.register<GitRepoPublishTask>(GitRepoPublishTask.TASK_NAME + gitRepo.name.uppercaseFirstChar()) {
         dependsOn(gitRepoPublishingTasks)
+        dependsOn(gitRepoInitTask)
         publishedRepos.from(configurations.publications.map {
           it.incoming.artifactView { lenient(true) }.files
         })
