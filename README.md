@@ -27,7 +27,7 @@ buildscript {
 }
 
 plugins {
-  id("dev.adamko.vcs-mvn-publish")
+  id("dev.adamko.vcs-mvn-publish") version "main-SNAPSHOT"
   java
   `maven-publish`
 }
