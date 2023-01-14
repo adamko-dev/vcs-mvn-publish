@@ -45,12 +45,6 @@ jobs:
           distribution: temurin
           java-version: 11
 
-      - id: cache-kotlin-konan
-        uses: actions/cache@v3
-        with:
-          path: ~/.konan
-          key: kotlin-konan-${{ runner.os }}
-
       - uses: gradle/gradle-build-action@v2
         with:
           gradle-home-cache-cleanup: true
