@@ -1,4 +1,4 @@
-# vcs mvn publish
+# `vcs-mvn-publish`
 
 Publish Maven artifacts to a Git repository. 
 
@@ -8,7 +8,7 @@ Simpler than figuring out publishing to Maven Central!
 
 ### Status
 
-vcs-mvn-publish is a proof-of-concept. There are no tests. Use at your own risk.
+`vcs-mvn-publish` is a proof-of-concept. There are no tests. Use at your own risk.
 
 ### Quick start
 
@@ -52,5 +52,5 @@ If you're happy, then enable auto-push, and re-run `./gradlew gitRepoPublish`.
 
 ### Multiple subprojects
 
-To publish multiple subprojects to the Git repository, just add vcs-mvn-publish to all relevant
+To publish multiple subprojects to the Git repository, just add `vcs-mvn-publish` to all relevant
 subprojects, and to the root project.
