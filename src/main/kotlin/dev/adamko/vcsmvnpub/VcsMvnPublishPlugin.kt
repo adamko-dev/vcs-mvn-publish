@@ -76,7 +76,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
         .withType<PublishToMavenRepository>()
         .matching { publishTask ->
           val matching = publishTask.repository?.url.sameFileAs(gitRepo.localRepoDir)
-          log.lifecycle("gitRepo ${gitRepo.name} has publishing task ${publishTask.path}")
+          log.info("gitRepo '${gitRepo.name}' has publishing task ${publishTask.path}")
           matching
         }
 
