@@ -104,17 +104,13 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
 
       // register lifecycle tasks
-      if (project.tasks.findByName(GitRepoInitTask.TASK_NAME) == null) {
-        project.tasks.register<VcsMvnPublishTask>(GitRepoInitTask.TASK_NAME) {
-          description = "Run all GitRepoInit tasks"
-          dependsOn(project.tasks.withType<GitRepoInitTask>())
-        }
+      project.tasks.maybeCreate<VcsMvnPublishTask>(GitRepoInitTask.TASK_NAME).apply {
+        description = "Run all GitRepoInit tasks"
+        dependsOn(project.tasks.withType<GitRepoInitTask>())
       }
-      if (project.tasks.findByName(GitRepoPublishTask.TASK_NAME) == null) {
-        project.tasks.register<VcsMvnPublishTask>(GitRepoPublishTask.TASK_NAME) {
-          description = "Run all GitRepoPublish tasks"
-          dependsOn(project.tasks.withType<GitRepoPublishTask>())
-        }
+      project.tasks.maybeCreate<VcsMvnPublishTask>("").apply {
+        description = "Run all GitRepoPublish tasks"
+        dependsOn(project.tasks.withType<GitRepoPublishTask>())
       }
     }
   }
