@@ -15,7 +15,7 @@ vcs-mvn-publish is a proof-of-concept. There are no tests. Use at your own risk.
 First, set up a regular Gradle project, and configure the 
 [Maven Publish Plugin](https://docs.gradle.org/current/userguide/publishing_maven.html).
 
-Next, add the `vcs-mvn-publish`, and register a Git repo.
+Next, add the `vcs-mvn-publish` plugin, and register a Git repo.
 
 ```kotlin
 buildscript {
