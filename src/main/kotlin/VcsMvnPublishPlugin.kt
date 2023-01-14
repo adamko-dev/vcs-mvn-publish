@@ -7,7 +7,6 @@ import dev.adamko.vcsmvnpub.util.asConsumer
 import dev.adamko.vcsmvnpub.util.asProvider
 import dev.adamko.vcsmvnpub.util.uppercaseFirstChar
 import java.net.URI
-import javax.inject.Inject
 import org.gradle.api.NamedDomainObjectProvider
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -21,16 +20,13 @@ import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Provider
-import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.publish.plugins.PublishingPlugin
 import org.gradle.kotlin.dsl.*
 
 
-abstract class VcsMvnPublishPlugin @Inject constructor(
-  private val providers: ProviderFactory,
-) : Plugin<Project> {
+abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
 
   private val log: Logger = Logging.getLogger(this::class.java)
