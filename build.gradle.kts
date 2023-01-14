@@ -66,7 +66,7 @@ testing.suites {
         dependsOn(tasks.matching { it.name == "publishAllPublicationsToProjectLocalRepository" })
         systemProperties(
           "projectLocalMavenRepo" to rootProject.layout.buildDirectory.dir("maven-project-local")
-            .map { it.asFile.canonicalPath }.get(),
+            .map { it.asFile.invariantSeparatorsPath }.get(),
         )
       }
     }
