@@ -93,6 +93,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
       project.tasks.register<GitRepoPublishTask>(GitRepoPublishTask.TASK_NAME + gitRepo.name.uppercaseFirstChar()) {
         dependsOn(gitRepoPublishingTasks)
         dependsOn(gitRepoInitTask)
+        mustRunAfter(project.tasks.withType<GitRepoInitTask>())
         publishedRepos.from(configurations.publications.map {
           it.incoming.artifactView { lenient(true) }.files
         })
@@ -104,12 +105,14 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
 
       // register lifecycle tasks
-      project.tasks.maybeCreate<VcsMvnPublishTask>(GitRepoInitTask.TASK_NAME).apply {
-        description = "Run all GitRepoInit tasks"
-        dependsOn(project.tasks.withType<GitRepoInitTask>())
-      }
+      val gitRepoInitLifecycleTask =
+        project.tasks.maybeCreate<VcsMvnPublishTask>(GitRepoInitTask.TASK_NAME).apply {
+          description = "Run all GitRepoInit tasks"
+          dependsOn(project.tasks.withType<GitRepoInitTask>())
+        }
       project.tasks.maybeCreate<VcsMvnPublishTask>("").apply {
         description = "Run all GitRepoPublish tasks"
+        dependsOn(gitRepoInitLifecycleTask)
         dependsOn(project.tasks.withType<GitRepoPublishTask>())
       }
     }
