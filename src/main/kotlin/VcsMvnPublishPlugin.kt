@@ -168,7 +168,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
     // create a new local Maven repository
     publishing.repositories.maven {
-      name = "Local${gitRepo.name.uppercaseFirstChar()}"
+      name = "VcsMvnPublish${gitRepo.name.uppercaseFirstChar()}"
       setUrl(
         providers.zip(
           gitRepo.localRepoDir,
