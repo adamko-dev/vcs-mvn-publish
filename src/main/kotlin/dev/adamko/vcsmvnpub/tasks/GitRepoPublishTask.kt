@@ -40,7 +40,7 @@ abstract class GitRepoPublishTask : VcsMvnPublishTask() {
       val gitService = task.gitService.get()
       val localRepoDir: File = task.localRepoDir.asFile.get()
 
-      gitService.status(localRepoDir).isBlank()
+      localRepoDir.exists() && gitService.status(localRepoDir).isBlank()
     }
   }
 
