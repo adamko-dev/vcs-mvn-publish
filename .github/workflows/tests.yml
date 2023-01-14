@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+
+permissions:
+  contents: read
+
+
+jobs:
+
+  gradle-check:
+    strategy:
+      matrix:
+        os:
+          - macos-11
+          - ubuntu-latest
+          - windows-latest
+        task:
+          - check
+          - build
+      fail-fast: false
+    uses: ./.github/workflows/gradle_task.yml
+    with:
+      runs-on: ${{ matrix.os }}
+      gradle-task: >-
+        ${{ matrix.task }} --stacktrace
