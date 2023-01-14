@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>dev.adamko.vcsmvnpub</groupId>
+  <artifactId>vcs-mvn-publish</artifactId>
+  <versioning>
+    <latest>main-SNAPSHOT</latest>
+    <versions>
+      <version>main-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20230114171656</lastUpdated>
+  </versioning>
+</metadata>
