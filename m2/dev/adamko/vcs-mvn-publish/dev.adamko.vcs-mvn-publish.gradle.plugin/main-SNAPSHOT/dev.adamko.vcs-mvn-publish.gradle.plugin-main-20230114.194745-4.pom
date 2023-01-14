@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.adamko.vcs-mvn-publish</groupId>
+  <artifactId>dev.adamko.vcs-mvn-publish.gradle.plugin</artifactId>
+  <version>main-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <url>https://github.com/adamko-dev/vcs-mvn-publish</url>
+  <scm>
+    <connection>scm:git:git://github.com/adamko-dev/vcs-mvn-publish.git</connection>
+    <developerConnection>scm:git:ssh://github.com:adamko-dev/vcs-mvn-publish.git</developerConnection>
+    <url>https://github.com/adamko-dev/vcs-mvn-publish</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>dev.adamko.vcsmvnpub</groupId>
+      <artifactId>vcs-mvn-publish</artifactId>
+      <version>main-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+</project>
