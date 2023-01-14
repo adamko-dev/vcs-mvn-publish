@@ -4,6 +4,7 @@ plugins {
   buildsrc.convention.`kotlin-jvm`
   `kotlin-dsl`
   `java-gradle-plugin`
+  `jvm-test-suite`
 
   id("me.qoomon.git-versioning")
 
@@ -34,6 +35,55 @@ dependencies {
   implementation(libs.kotlin.utilIO)
 }
 
+
+@Suppress("UnstableApiUsage") // jvm test suites are incubating
+testing.suites {
+  val test by getting(JvmTestSuite::class) {
+    useJUnitJupiter()
+
+    dependencies {
+      implementation("io.kotest:kotest-assertions-core:5.5.4")
+      implementation("io.kotest:kotest-runner-junit5:5.5.4")
+
+      implementation("io.mockk:mockk:1.13.3")
+    }
+  }
+
+  val functionalTest by registering(JvmTestSuite::class) {
+    useJUnitJupiter()
+    testType.set(TestSuiteType.FUNCTIONAL_TEST)
+
+    dependencies {
+      implementation("io.kotest:kotest-assertions-core:5.5.4")
+      implementation("io.kotest:kotest-runner-junit5:5.5.4")
+
+      implementation(project.dependencies.gradleTestKit())
+    }
+
+    targets.configureEach {
+      testTask.configure {
+        shouldRunAfter(test)
+        dependsOn(tasks.matching { it.name == "publishAllPublicationsToProjectLocalRepository" })
+        systemProperties(
+          "projectLocalMavenRepo" to rootProject.layout.buildDirectory.dir("maven-project-local")
+            .map { it.asFile.canonicalPath }.get(),
+        )
+      }
+    }
+
+    sources {
+      java {
+        resources {
+          srcDir(tasks.pluginUnderTestMetadata.flatMap { it.outputDirectory })
+        }
+      }
+    }
+
+    gradlePlugin.testSourceSet(sources)
+  }
+
+  tasks.check { dependsOn(functionalTest) }
+}
 
 gradlePlugin {
   plugins {
