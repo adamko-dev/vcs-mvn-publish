@@ -110,7 +110,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
           description = "Run all GitRepoInit tasks"
           dependsOn(project.tasks.withType<GitRepoInitTask>())
         }
-      project.tasks.maybeCreate<VcsMvnPublishTask>("").apply {
+      project.tasks.maybeCreate<VcsMvnPublishTask>(GitRepoPublishTask.TASK_NAME).apply {
         description = "Run all GitRepoPublish tasks"
         dependsOn(gitRepoInitLifecycleTask)
         dependsOn(project.tasks.withType<GitRepoPublishTask>())
