@@ -14,7 +14,9 @@ dependencies {
   val gitVersioningPluginVersion = "5.2.0"
   implementation("me.qoomon:gradle-git-versioning-plugin:$gitVersioningPluginVersion")
 
-  implementation("com.gradle.publish:plugin-publish-plugin:1.0.0")
+  implementation("com.gradle.publish:plugin-publish-plugin:1.1.0")
+
+  implementation("dev.adamko.vcsmvnpub:vcs-mvn-publish:+")
 }
 
 

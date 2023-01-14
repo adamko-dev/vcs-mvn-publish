@@ -11,6 +11,8 @@ plugins {
   buildsrc.convention.`maven-publish`
 
   idea
+
+  dev.adamko.`vcs-mvn-publish`
 }
 
 
@@ -42,6 +44,9 @@ gradlePlugin {
   }
 }
 
+vcsMvnPublish {
+  gitRepo("artifacts")
+}
 
 idea {
   module {

@@ -18,6 +18,14 @@ First, set up a regular Gradle project, and configure the
 Next, add the `vcs-mvn-publish`, and register a Git repo.
 
 ```kotlin
+buildscript {
+  plugins {
+    repositories {
+      maven("https://raw.githubusercontent.com/adamko-dev/vcs-mvn-publish/artifacts/m2")
+    }
+  }
+}
+
 plugins {
   id("dev.adamko.vcs-mvn-publish")
   java
