@@ -99,7 +99,6 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
         })
         gitService.convention(gitServiceProvider)
         localRepoDir.convention(gitRepo.localRepoDir)
-//      publishTasks.addAllLater(gitRepoPublishingTasksProvider)
         gitPushToRemoteEnabled.convention(settings.gitPushToRemoteEnabled)
       }
 
@@ -220,23 +219,6 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
   }
 
 
-//  /** task provider helpers - help make the script configurations shorter & more legible */
-//  private val TaskContainer.provider: TaskProviders get() = TaskProviders(this)
-//
-//
-//  /** Lazy task providers */
-//  private inner class TaskProviders(private val tasks: TaskContainer) {
-//
-//    val publish: Provider<Task>
-//      get() = provider(PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME)
-//
-//    // Workaround for https://github.com/gradle/gradle/issues/16543
-//    private inline fun <reified T : Task> provider(taskName: String): Provider<T> =
-//      providers
-//        .provider { taskName }
-//        .flatMap { tasks.named<T>(it) }
-//  }
-
   class Configurations(
     project: Project
   ) {
@@ -280,13 +262,6 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
     private fun URI?.sameFileAs(dir: DirectoryProperty): Boolean =
       this != null && toURL().sameFile(dir.asFile.get().toURI().toURL())
-
-
-//    private val Project.pathEscaped: String
-//      get() {
-//        logger.lifecycle("escaping path $path, display name $displayName, is root ${project == rootProject}")
-//        return name.replace('-') { !it.isLetterOrDigit() }
-//      }
 
     private fun Project.isRootProject(): Boolean = rootProject == project
   }
