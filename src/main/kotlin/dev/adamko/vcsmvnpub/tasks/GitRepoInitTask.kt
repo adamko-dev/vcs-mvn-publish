@@ -116,17 +116,16 @@ abstract class GitRepoInitTask : VcsMvnPublishTask() {
       )
       logger.lifecycle("switched to branch '$branch' ${currentBranch()}")
     } else {
-      logger.lifecycle("branch does not exist on remote - checking out new branch '$branch 'in $localRepoFile ${currentBranch()}")
+      logger.lifecycle("branch does not exist on remote - checking out new branch '$branch 'in $localRepoFile, ${currentBranch()}")
       when (branchCreateMode.get()) {
-        VcsMvnGitRepo.BranchCreateMode.CreateOrphan -> {
+        VcsMvnGitRepo.BranchCreateMode.CreateOrphan ->
           gitService.switchCreateOrphan(
-            localRepoFile,
-            branch,
+            repoDir = localRepoFile,
+            branch = branch,
           )
-        }
-        VcsMvnGitRepo.BranchCreateMode.Disabled     -> error(
-          "branch $branch does not exist in $remoteUri, and artifactBranchCreateMode is $branchCreateMode"
-        )
+
+        VcsMvnGitRepo.BranchCreateMode.Disabled     ->
+          error("artifactBranchCreateMode is $branchCreateMode, but branch $branch does not exist in $remoteUri")
       }
     }
 

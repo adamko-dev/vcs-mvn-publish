@@ -43,7 +43,7 @@ abstract class VcsMvnPublishSettings {
     name: String,
     configure: VcsMvnGitRepo.() -> Unit = {},
   ) {
-    logger.lifecycle("Creating GitRepo")
+    logger.lifecycle("Creating GitRepo $name")
     gitRepos.register(name) {
       localRepoDir.convention(localPublishDir.dir(name))
       artifactBranchCreateMode.convention(VcsMvnGitRepo.BranchCreateMode.CreateOrphan)

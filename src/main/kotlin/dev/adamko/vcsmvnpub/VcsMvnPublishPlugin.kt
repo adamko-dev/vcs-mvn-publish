@@ -44,16 +44,15 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
     val settings: VcsMvnPublishSettings = project.createExtension()
     val gitServiceProvider = project.gradle.registerGitService(settings)
 
-    project.plugins.withType<PublishingPlugin>().configureEach {
-      log.lifecycle("applying $PROJECT_NAME")
-
-      settings.gitRepos.all {
-        project.setupLocalGitRepoPublication(settings, this, gitServiceProvider)
-      }
-    }
 
     settings.gitRepos.all {
       val gitRepo = this
+
+      project.plugins.withType<PublishingPlugin>().configureEach {
+        log.lifecycle("applying $PROJECT_NAME")
+
+        project.setupLocalGitRepoPublication(settings, gitRepo, gitServiceProvider)
+      }
 
       // register an 'init-repo' task specifically for this GitRepo
       val gitRepoInitTask =
@@ -77,7 +76,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
         .withType<PublishToMavenRepository>()
         .matching { publishTask ->
           val matching = publishTask.repository?.url.sameFileAs(gitRepo.localRepoDir)
-          log.lifecycle("found matching ${publishTask.name}")
+          log.lifecycle("gitRepo ${gitRepo.name} has publishing task ${publishTask.path}")
           matching
         }
 
@@ -97,10 +96,8 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
       // create a task to commit and push the artifacts
       project.tasks.register<GitRepoPublishTask>(GitRepoPublishTask.TASK_NAME + gitRepo.name.uppercaseFirstChar()) {
         dependsOn(gitRepoPublishingTasks)
-        dependsOn(gitRepoInitTask)
-//      dependsOn(tasks.provider.publish)
-        publishedRepos.from(configurations.publications.flatMap {
-          it.incoming.artifactView { lenient(true) }.artifacts.resolvedArtifacts
+        publishedRepos.from(configurations.publications.map {
+          it.incoming.artifactView { lenient(true) }.files
         })
         gitService.convention(gitServiceProvider)
         localRepoDir.convention(gitRepo.localRepoDir)
@@ -149,7 +146,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
         defaultDependencies {
           addAllLater(
             providers.provider {
-              project.subprojects.map { subproject ->
+              project.allprojects.map { subproject ->
                 project.dependencies.create(subproject)
               }
             }
@@ -167,7 +164,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
     gitRepo: VcsMvnGitRepo,
     gitServiceProvider: Provider<GitService>,
   ) {
-    log.lifecycle("[$PROJECT_NAME] configuring git repo $gitRepo")
+    log.lifecycle("[$PROJECT_NAME] configuring git repo '${gitRepo.name}'")
 
     gitRepo.remoteUri.convention(
       gitRemoteUriConvention(
@@ -178,7 +175,7 @@ abstract class VcsMvnPublishPlugin @Inject constructor(
 
     // create a new local Maven repository
     publishing.repositories.maven {
-      name = PROJECT_NAME
+      name = "Local${gitRepo.name.uppercaseFirstChar()}"
       setUrl(
         providers.zip(
           gitRepo.localRepoDir,
