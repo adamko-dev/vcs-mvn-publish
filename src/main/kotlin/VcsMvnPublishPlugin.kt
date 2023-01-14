@@ -1,5 +1,6 @@
 package dev.adamko.vcsmvnpub
 
+import dev.adamko.vcsmvnpub.VcsMvnGitRepo.Companion.localPublishDir
 import dev.adamko.vcsmvnpub.tasks.GitRepoInitTask
 import dev.adamko.vcsmvnpub.tasks.GitRepoPublishTask
 import dev.adamko.vcsmvnpub.tasks.VcsMvnPublishTask
@@ -14,7 +15,7 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.attributes.AttributeContainer
 import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.Usage
-import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.Directory
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
@@ -63,7 +64,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
       // ensure all git repos are initialized before any publishing tasks run
       project.tasks.withType<PublishToMavenRepository>().configureEach {
-        mustRunAfter(gitRepoInitTask)
+        mustRunAfter(project.tasks.withType<GitRepoInitTask>())
       }
 
       // find the publishing tasks created by maven-publish plugin
@@ -71,8 +72,10 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
       val gitRepoPublishingTasks = project.tasks
         .withType<PublishToMavenRepository>()
         .matching { publishTask ->
-          val matching = publishTask.repository?.url.sameFileAs(gitRepo.localRepoDir)
-          log.info("gitRepo '${gitRepo.name}' has publishing task ${publishTask.path}")
+          val matching = publishTask.repository?.url.sameFileAs(gitRepo.localPublishDir)
+          if (matching) {
+            log.lifecycle("gitRepo '${gitRepo.name}' has publishing task ${publishTask.path}")
+          }
           matching
         }
 
@@ -85,17 +88,22 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
       }
 
       // publishing depends on the git repo being set up and checked out
-      gitRepoPublishingTasks.configureEach {
+      gitRepoPublishingTasks.all {
+        log.lifecycle("gitRepoPublishingTask $path")
         dependsOn(gitRepoInitTask)
+        configurations.publicationElements.configure {
+          outgoing.artifact(repository.url.path)
+        }
       }
 
       // create a task to commit and push the artifacts
       project.tasks.register<GitRepoPublishTask>(GitRepoPublishTask.TASK_NAME + gitRepo.name.uppercaseFirstChar()) {
-        dependsOn(gitRepoPublishingTasks)
         dependsOn(gitRepoInitTask)
+        dependsOn(gitRepoPublishingTasks)
         mustRunAfter(project.tasks.withType<GitRepoInitTask>())
-        publishedRepos.from(configurations.publications.map {
-          it.incoming.artifactView { lenient(true) }.files
+        mustRunAfter(project.tasks.withType<PublishToMavenRepository>())
+        publishedRepos.from(configurations.publications.map { publication ->
+          publication.incoming.artifactView { lenient(true) }.files.filter { it.exists() }
         })
         gitService.convention(gitServiceProvider)
         localRepoDir.convention(gitRepo.localRepoDir)
@@ -123,7 +131,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
 
     return extensions.create<VcsMvnPublishSettings>(EXTENSION_NAME)
       .apply {
-        localPublishDir.convention(
+        baseLocalPublishDir.convention(
           rootProject.layout.projectDirectory.dir(".gradle/$BASE_REPO_NAME")
         )
         gitExec.convention("git")
@@ -171,17 +179,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
     // create a new local Maven repository
     publishing.repositories.maven {
       name = "VcsMvnPublish${gitRepo.name.uppercaseFirstChar()}"
-      setUrl(
-        providers.zip(
-          gitRepo.localRepoDir,
-          gitRepo.repoArtifactDir.orElse(""),
-        ) { localDir, artifactDir ->
-          when {
-            artifactDir.isEmpty() -> localDir
-            else                  -> localDir.dir(artifactDir)
-          }.asFile
-        }
-      )
+      setUrl(gitRepo.localPublishDir)
     }
   }
 
@@ -189,8 +187,6 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
   private fun Gradle.registerGitService(
     settings: VcsMvnPublishSettings
   ): Provider<GitService> {
-    log.lifecycle("[$PROJECT_NAME] registering GitService")
-
     return gradle.sharedServices.registerIfAbsent(
       GitService.NAME,
       GitService::class,
@@ -241,6 +237,7 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
         description = "consume vcs-mvn-publish publications from other subprojects"
         asConsumer()
         attributes { publicationAttributes() }
+//        extendsFrom(publicationElements.get())
       }
 
     companion object {
@@ -260,8 +257,8 @@ abstract class VcsMvnPublishPlugin : Plugin<Project> {
       get() = extensions.getByType()
 
 
-    private fun URI?.sameFileAs(dir: DirectoryProperty): Boolean =
-      this != null && toURL().sameFile(dir.asFile.get().toURI().toURL())
+    private fun URI?.sameFileAs(dir: Provider<Directory>): Boolean =
+      this != null && toURL().sameFile(dir.get().asFile.toURI().toURL())
 
     private fun Project.isRootProject(): Boolean = rootProject == project
   }

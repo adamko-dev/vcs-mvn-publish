@@ -11,7 +11,7 @@ dependencyResolutionManagement {
   }
 
   repositories {
-    maven("https://raw.githubusercontent.com/adamko-dev/vcs-mvn-publish/artifacts/m2")
     maven(file("../build/maven-project-local"))
+    maven("https://raw.githubusercontent.com/adamko-dev/vcs-mvn-publish/artifacts/m2")
   }
 }

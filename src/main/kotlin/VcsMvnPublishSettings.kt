@@ -17,7 +17,7 @@ abstract class VcsMvnPublishSettings {
    *
    * New releases will be copied into this directory before they are committed and pushed.
    */
-  abstract val localPublishDir: DirectoryProperty
+  abstract val baseLocalPublishDir: DirectoryProperty
 
   /**
    * The full path of the git executable.
@@ -39,13 +39,14 @@ abstract class VcsMvnPublishSettings {
 
   abstract val gitRepos: NamedDomainObjectContainer<VcsMvnGitRepo>
 
+  /** Add details for a [Git repo][VcsMvnGitRepo]. */
   fun gitRepo(
     name: String,
     configure: VcsMvnGitRepo.() -> Unit = {},
   ) {
     logger.lifecycle("Creating GitRepo $name")
     gitRepos.register(name) {
-      localRepoDir.convention(localPublishDir.dir(name))
+      localRepoDir.convention(baseLocalPublishDir.dir(name))
       artifactBranchCreateMode.convention(VcsMvnGitRepo.BranchCreateMode.CreateOrphan)
       artifactBranch.convention(name)
       repoArtifactDir.convention("m2")

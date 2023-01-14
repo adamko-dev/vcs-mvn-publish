@@ -1,12 +1,14 @@
 package dev.adamko.vcsmvnpub
 
 import org.gradle.api.Named
+import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 
-interface VcsMvnGitRepo: Named {
+interface VcsMvnGitRepo : Named {
 
   /** The location of the remote Git repo */
   @get:Input
@@ -25,7 +27,7 @@ interface VcsMvnGitRepo: Named {
   @get:Optional
   val repoArtifactDir: Property<String>
 
-  /** Defaults to a directory inside [VcsMvnPublishSettings.localPublishDir] */
+  /** Defaults to a directory inside [VcsMvnPublishSettings.baseLocalPublishDir] */
   @get:Input
   val localRepoDir: DirectoryProperty
 
@@ -35,5 +37,16 @@ interface VcsMvnGitRepo: Named {
     CreateOrphan,
     /** Do not create [VcsMvnGitRepo.artifactBranch] if it does not exist */
     Disabled,
+  }
+
+  companion object {
+    /** Target directory of Maven publish tasks */
+    internal val VcsMvnGitRepo.localPublishDir: Provider<Directory>
+      get() = localRepoDir.zip(repoArtifactDir.orElse("")) { localDir, artifactDir ->
+        when {
+          artifactDir.isEmpty() -> localDir
+          else                  -> localDir.dir(artifactDir)
+        }
+      }
   }
 }
